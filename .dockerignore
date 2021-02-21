@@ -1,0 +1,8 @@
+.env
+.env*
+.next
+**/.env
+node_modules
+**/node_modules
+**/.rts2_cache_cjs
+**/.rts2_cache_esm

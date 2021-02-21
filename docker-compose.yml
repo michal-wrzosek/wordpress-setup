@@ -1,0 +1,53 @@
+# for development only!
+version: '3.3'
+
+services:
+  example-com-nginx:
+    container_name: example-com-nginx
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-dev:/etc/nginx/conf.d
+      - ./logs/nginx:/var/log/nginx
+      - ./example-com-wordpress:/var/www/html:cached
+      - ./example-com.development.pem:/etc/ssl/example-com.development.pem
+      - ./example-com.development-key.pem:/etc/ssl/example-com.development-key.pem
+    depends_on:
+      - example-com-wordpress
+
+  example-com-wordpress:
+    container_name: example-com-wordpress
+    image: wordpress:5.5.0-php7.4-fpm
+    volumes:
+      - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./php/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./example-com-wordpress:/var/www/html:cached
+    expose:
+      - "9000"
+    environment:
+      WORDPRESS_DB_HOST: example-com-mysql:3306
+      WORDPRESS_DB_NAME: example-com
+      WORDPRESS_TABLE_PREFIX: example-com-
+      WORDPRESS_DB_USER: example-com
+      WORDPRESS_DB_PASSWORD: 'dev_mysql_user_password'
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_SITEURL', 'https://example-com.development');
+        define('WP_HOME', 'https://example-com.development');
+        define('WP_DEBUG', true);
+    depends_on:
+      - example-com-mysql
+
+  example-com-mysql:
+    container_name: example-com-mysql
+    image: mysql:5.7
+    volumes:
+      - ./example-com-mysql:/var/lib/mysql:delegated
+    expose:
+      - "3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 'dev_mysql_root_password'
+      MYSQL_DATABASE: example-com
+      MYSQL_USER: example-com
+      MYSQL_PASSWORD: 'dev_mysql_user_password'

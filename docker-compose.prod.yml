@@ -1,0 +1,67 @@
+version: '3.3'
+
+services:
+  example-com-nginx:
+    container_name: example-com-nginx
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx_prod:/etc/nginx/conf.d
+      - ./logs/nginx:/var/log/nginx
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./example-com-wordpress:/var/www/html:cached
+    depends_on:
+      - example-com-wordpress
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    container_name: certbot
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - example-com-nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  example-com-wordpress:
+    container_name: example-com-wordpress
+    image: wordpress:5.5.0-php7.4-fpm
+    restart: unless-stopped
+    volumes:
+      - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./php/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./example-com-wordpress:/var/www/html:cached
+    expose:
+      - "9000"
+    env_file:
+      - .env.example-com-wordpress
+    environment:
+      WORDPRESS_DB_HOST: example-com-mysql:3306
+      WORDPRESS_DB_NAME: example-com
+      WORDPRESS_TABLE_PREFIX: example-com-
+      WORDPRESS_DB_USER: example-com
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_SITEURL', 'https://example.com');
+        define('WP_HOME', 'https://example.com');
+    depends_on:
+      - example-com-mysql
+
+  example-com-mysql:
+    container_name: example-com-mysql
+    image: mysql:5.7
+    restart: unless-stopped
+    volumes:
+      - ./example-com-mysql:/var/lib/mysql:delegated
+    expose:
+      - "3306"
+    env_file:
+      - .env.example-com-mysql
+    environment:
+      MYSQL_DATABASE: example-com
+      MYSQL_USER: example-com

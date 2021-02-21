@@ -1,0 +1,4 @@
+.DS_Store
+.env*
+!.env.example-com-wordpress.default
+!.env.example-com-mysql.default
